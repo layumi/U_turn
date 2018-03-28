@@ -1,5 +1,19 @@
 # A_reID
 
+### Method-ID
+1. Fast (**ICLR2015** [1])
+2. Basic Iteration (**ICLR2014** [2])
+3. Least-likly Iteration (**ICLR2017 Workshop** [3]) 
+4. Label-smooth 
+5. Our 
+
+[1] I. J. Goodfellow, J. Shlens, and C. Szegedy. Explaining and harnessing adversarial examples. In ICLR, 2015
+
+[2] C. Szegedy, W. Zaremba, I. Sutskever, J. Bruna, D. Erhan, I. J. Goodfellow, and R. Fergus. Intriguing properties of
+neural networks. In ICLR, 2014.
+
+[3] A. Kurakin, I. J. Goodfellow, & S. Bengio. (2016). Adversarial examples in the physical world. In ICLR Workshop, 2017.
+
 ### ResNet-50
 |Rate  | Method-ID | top-1 | top-5 | top-10 | mAP|
 | ---- | --------- | ----- | ----- | ------ | -- |
