@@ -1,9 +1,9 @@
 # A_reID
 
 ### Method-ID
-1. Fast (**ICLR2015** [1])
-2. Basic Iteration (**ICLR2014** [2])
-3. Least-likly Iteration (**ICLR2017 Workshop** [3]) 
+1. Fast [1]
+2. Basic Iteration [2]
+3. Least-likly Iteration [3] 
 4. Label-smooth 
 5. Our 
 
