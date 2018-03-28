@@ -7,19 +7,10 @@
 4. Label-smooth 
 5. Our 
 
-[1] I. J. Goodfellow, J. Shlens, and C. Szegedy. Explaining and harnessing adversarial examples. In ICLR, 2015
-
-[2] C. Szegedy, W. Zaremba, I. Sutskever, J. Bruna, D. Erhan, I. J. Goodfellow, and R. Fergus. Intriguing properties of
-neural networks. In ICLR, 2014.
-
-[3] A. Kurakin, I. J. Goodfellow, & S. Bengio. (2016). Adversarial examples in the physical world. In ICLR Workshop, 2017.
-
+Only attack query. 
 ### ResNet-50
 |Rate  | Method-ID | top-1 | top-5 | top-10 | mAP|
 | ---- | --------- | ----- | ----- | ------ | -- |
-|2 | 1 | 0.818587 | 0.920724 | 0.950416 | 0.623365 |
-|2 | 2 | 0.813539 | 0.917458 | 0.948337 | 0.617632 |
-|2 | 3 | 0.838480 | 0.929632 | 0.956057 | 0.639194 |
 |2 | 1 | 0.818587 | 0.920724 | 0.950416 | 0.623365 |
 |2 | 2 | 0.813539 | 0.917458 | 0.948337 | 0.617632 |
 |2 | 3 | 0.838480 | 0.929632 | 0.956057 | 0.639190 |
@@ -46,3 +37,10 @@ neural networks. In ICLR, 2014.
 |16 | 4 | 0.588480 | 0.781473 | 0.843230 | 0.358868 |
 |16 | 5 | 0.005344 | 0.016033 | 0.023753 | 0.006218 |
 
+### Reference
+[1] I. J. Goodfellow, J. Shlens, and C. Szegedy. Explaining and harnessing adversarial examples. In ICLR, 2015
+
+[2] C. Szegedy, W. Zaremba, I. Sutskever, J. Bruna, D. Erhan, I. J. Goodfellow, and R. Fergus. Intriguing properties of
+neural networks. In ICLR, 2014.
+
+[3] A. Kurakin, I. J. Goodfellow, & S. Bengio. (2016). Adversarial examples in the physical world. In ICLR Workshop, 2017.
