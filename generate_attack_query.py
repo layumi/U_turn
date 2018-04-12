@@ -128,6 +128,7 @@ def generate_attack(model,dataloaders, method_id):
             loss = criterion(outputs, labels)
             loss.backward()
             inputs = inputs + torch.sign(inputs.grad) * opt.rate * alpha
+            inputs = clip(inputs,n)
         #2. IterativeGradientSignAttack
         elif method_id == 2:
             _, preds = torch.max(outputs.data, 1)
@@ -136,6 +137,7 @@ def generate_attack(model,dataloaders, method_id):
                 loss = criterion(outputs, labels)
                 loss.backward()
                 inputs = inputs + torch.sign(inputs.grad) * 1.0  * alpha # we use 1 instead of opt.rate
+                inputs = clip(inputs,n)
                 inputs = Variable(inputs.data, requires_grad=True)
                 outputs = model(inputs)
         #3. Iterative Least-likely method
@@ -146,7 +148,8 @@ def generate_attack(model,dataloaders, method_id):
             for iter in range( round(min(1.25 * opt.rate, opt.rate+4))):
                 loss = criterion(outputs, ll_label)
                 loss.backward()
-                inputs = inputs - torch.sign(inputs.grad) * 1.0  * alpha # we use 1 instead of opt.rate
+                inputs = inputs - torch.sign(inputs.grad) * 1.0 * alpha # we use 1 instead of opt.rate
+                inputs = clip(inputs,n)
                 inputs = Variable(inputs.data, requires_grad=True)
                 outputs = model(inputs)
         #4. Label-smooth method
@@ -160,6 +163,7 @@ def generate_attack(model,dataloaders, method_id):
                 loss2 = criterion2(sm(outputs), target)
                 loss2.backward()
                 inputs = inputs - torch.sign(inputs.grad) * 1.0 * alpha 
+                inputs = clip(inputs,n)
                 inputs = Variable(inputs.data, requires_grad=True)
                 outputs = model(inputs)
         #5. MSE on feature
@@ -185,7 +189,7 @@ def generate_attack(model,dataloaders, method_id):
                 #gnorm = torch.norm(g, p=2, dim=1, keepdim=True)
                 #g = g.div(gnorm.expand_as(g))
                 inputs = inputs - torch.sign(inputs.grad) * 1.0 * alpha
-                #inputs = inputs - g * alpha
+                inputs = clip(inputs,n)
                 inputs = Variable(inputs.data, requires_grad=True)
                 outputs = model(inputs)
                 fnorm = torch.norm(outputs, p=2, dim=1, keepdim=True)
@@ -194,7 +198,6 @@ def generate_attack(model,dataloaders, method_id):
         else:
             print('unknow method id')
  
-        #diff = inputs - inputs_copy
         #print(torch.mean(diff.abs()))
         #Save attack images
         attack = inputs.data.cpu()
@@ -248,7 +251,34 @@ subdir_name = os.path.join('./attack_query',name + '-' + str(opt.method_id), str
 if not os.path.isdir(subdir_name):
     os.mkdir(subdir_name)
 
+#######################################################################
+# Creat Up bound and low bound
+# Clip 
+zeros = np.ones((256,128,3),dtype=np.uint8)
+zeros = Image.fromarray(zeros) 
+zeros = data_transforms(zeros)
 
-# Extract feature
+ones = 255*np.ones((256,128,3), dtype=np.uint8)
+ones = Image.fromarray(ones)
+ones = data_transforms(ones)
+
+zeros,ones = zeros.cuda(),ones.cuda()
+
+def clip(inputs, batch_size):
+    inputs = inputs.data
+    for i in range(batch_size):
+        inputs[i] = clip_single(inputs[i])
+    inputs = Variable(inputs.cuda())
+    return inputs
+
+def clip_single(input):       
+    low_mask = input<zeros
+    up_mask = input>ones
+    input[low_mask] = zeros[low_mask]
+    input[up_mask] = ones[up_mask]
+    return input
+
+##########################################################################
+# Generate Attack Samples
 generate_attack(model,dataloaders['query'],opt.method_id)
 
