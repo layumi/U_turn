@@ -9,39 +9,40 @@ from PIL import Image
 #---------------------------
 x_epoch = [2,4,8,12,16]
 
-y0 = [0.88, 0.88, 0.88, 0.88, 0.88]
+top1 = {}
+top10 = {}
 
-y1 = [0.818587,
-0.668943,
-0.38747,
-0.194181,
-0.085808
-]
-y2 = [0.813539,
-0.512767,
-0.237827,
-0.139252,
-0.094418
-]
-y3 = [0.83848,
-0.611639,
-0.233967,
-0.088777,
-0.037411
-]
+for i in range(6):
+    top1[i] = []
+    top10[i] = []
 
-y5 = [0.824525,
-0.438836,
-0.078682,
-0.020487,
-0.005344
-]
+top1[0] = [0.88, 0.88, 0.88, 0.88, 0.88]
+top10[0] = [0.97, 0.97, 0.97, 0.97, 0.97]
+
+with open("Output.txt", "r") as f:
+    for line in f:
+        score = line.split('|')
+        method_id = int(score[2])
+        top1_acc, top10_acc = float(score[3]), float(score[5])
+        top1[method_id].append(top1_acc)
+        top10[method_id].append(top10_acc)
+
 fig = plt.figure()
-ax0 = fig.add_subplot(111, title="accuracy")
-ax0.plot(x_epoch, y0, 'ko-', label='GT')
-ax0.plot(x_epoch, y1, 'bo-', label='Fast')
-ax0.plot(x_epoch, y2, 'ro-', label='Basic')
-ax0.plot(x_epoch, y3, 'go-', label='Least-likely')
-ax0.plot(x_epoch, y5, 'yo-', label='Our')
+ax0 = fig.add_subplot(121, title="top1")
+ax0.plot(x_epoch, top1[0], 'ko-', label='GT')
+ax0.plot(x_epoch, top1[1], 'bo-', label='Fast')
+ax0.plot(x_epoch, top1[2], 'ro-', label='Basic')
+ax0.plot(x_epoch, top1[3], 'go-', label='Least-likely')
+ax0.plot(x_epoch, top1[5], 'yo-', label='Our')
 ax0.legend()
+
+
+ax0 = fig.add_subplot(122, title="top10")
+ax0.plot(x_epoch, top10[0], 'ko-', label='GT')
+ax0.plot(x_epoch, top10[1], 'bo-', label='Fast')
+ax0.plot(x_epoch, top10[2], 'ro-', label='Basic')
+ax0.plot(x_epoch, top10[3], 'go-', label='Least-likely')
+ax0.plot(x_epoch, top10[5], 'yo-', label='Our')
+ax0.legend()
+
 fig.savefig( 'accuracy.jpg')
