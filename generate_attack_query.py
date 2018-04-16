@@ -120,7 +120,9 @@ def generate_attack(model,dataloaders, method_id):
         # So when we recover, we need to use a alpha
         alpha = 1.0 / (0.226 * 255.0)
         criterion = nn.CrossEntropyLoss()
-        inputs_copy = Variable(inputs.data, requires_grad=True)
+        inputs_copy = Variable(inputs.data, requires_grad = False)
+        diff = torch.FloatTensor(inputs.shape).zero_()
+        diff = Variable(diff.cuda(), requires_grad = False)
         #1. FGSM, GradientSignAttack
         if method_id == 1:
             _, preds = torch.max(outputs.data, 1)
@@ -136,7 +138,10 @@ def generate_attack(model,dataloaders, method_id):
             for iter in range( round(min(1.25 * opt.rate, opt.rate+4))):
                 loss = criterion(outputs, labels)
                 loss.backward()
-                inputs = inputs + torch.sign(inputs.grad) * 1.0  * alpha # we use 1 instead of opt.rate
+                diff += torch.sign(inputs.grad)
+                mask_diff = diff.abs() > opt.rate
+                diff[mask_diff] = opt.rate * torch.sign(diff[mask_diff])
+                inputs = inputs_copy + diff * 1.0  * alpha # we use 1 instead of opt.rate
                 inputs = clip(inputs,n)
                 inputs = Variable(inputs.data, requires_grad=True)
                 outputs = model(inputs)
@@ -148,7 +153,10 @@ def generate_attack(model,dataloaders, method_id):
             for iter in range( round(min(1.25 * opt.rate, opt.rate+4))):
                 loss = criterion(outputs, ll_label)
                 loss.backward()
-                inputs = inputs - torch.sign(inputs.grad) * 1.0 * alpha # we use 1 instead of opt.rate
+                diff += torch.sign(inputs.grad)
+                mask_diff = diff.abs() > opt.rate
+                diff[mask_diff] = opt.rate * torch.sign(diff[mask_diff])
+                inputs = inputs_copy - diff * 1.0 * alpha # we use 1 instead of opt.rate
                 inputs = clip(inputs,n)
                 inputs = Variable(inputs.data, requires_grad=True)
                 outputs = model(inputs)
@@ -162,7 +170,10 @@ def generate_attack(model,dataloaders, method_id):
             for iter in range( round(min(1.25 * opt.rate, opt.rate+4))):
                 loss2 = criterion2(sm(outputs), target)
                 loss2.backward()
-                inputs = inputs - torch.sign(inputs.grad) * 1.0 * alpha 
+                diff += torch.sign(inputs.grad)
+                mask_diff = diff.abs() > opt.rate
+                diff[mask_diff] = opt.rate * torch.sign(diff[mask_diff])
+                inputs = inputs_copy - diff * 1.0 * alpha 
                 inputs = clip(inputs,n)
                 inputs = Variable(inputs.data, requires_grad=True)
                 outputs = model(inputs)
@@ -185,10 +196,10 @@ def generate_attack(model,dataloaders, method_id):
             for iter in range( round(min(1.25 * opt.rate, opt.rate+4))):
                 loss2 = criterion2(outputs, target)
                 loss2.backward()
-                #g = inputs.grad
-                #gnorm = torch.norm(g, p=2, dim=1, keepdim=True)
-                #g = g.div(gnorm.expand_as(g))
-                inputs = inputs - torch.sign(inputs.grad) * 1.0 * alpha
+                diff += torch.sign(inputs.grad)
+                mask_diff = diff.abs() > opt.rate
+                diff[mask_diff] = opt.rate * torch.sign(diff[mask_diff])
+                inputs = inputs_copy - diff * 1.0 * alpha
                 inputs = clip(inputs,n)
                 inputs = Variable(inputs.data, requires_grad=True)
                 outputs = model(inputs)
