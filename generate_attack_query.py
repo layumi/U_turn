@@ -163,13 +163,16 @@ def generate_attack(model,dataloaders, method_id):
         #4. Label-smooth method
         elif method_id == 4:
             batch_size = inputs.shape[0]
-            smooth_label = torch.ones(batch_size, 751)/751.0
+            smooth_label = torch.ones(batch_size, 751) /751.0
             target = Variable(smooth_label.cuda(), requires_grad=False)
             criterion2 = nn.MSELoss()
-            sm = nn.LogSoftmax(dim = 1) #softmax work on the second dim (sum of the 751 elements = 1)
+            sm = nn.Softmax(dim = 1) #softmax work on the second dim (sum of the 751 elements = 1)
             for iter in range( round(min(1.25 * opt.rate, opt.rate+4))):
-                loss2 = criterion2(sm(outputs), target)
+                sm_outputs = sm(outputs)
+                loss2 = criterion2(sm_outputs, target)
                 loss2.backward()
+                prob,_ = torch.max(sm_outputs,1)
+                print('iter:%d smooth-loss:%4f max-pre:%4f'%(iter, loss2.data[0],torch.mean(prob)))
                 diff += torch.sign(inputs.grad)
                 mask_diff = diff.abs() > opt.rate
                 diff[mask_diff] = opt.rate * torch.sign(diff[mask_diff])
