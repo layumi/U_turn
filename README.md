@@ -7,6 +7,9 @@
 4. Label-smooth 
 5. Our 
 
+86.85 / 96.88 / 70.27
+40.80 / 79.39 /19.24
+
 Only attack query. 
 ### ResNet-50
 |Rate  | Method-ID | top-1 | top-5 | top-10 | mAP|
