@@ -7,6 +7,10 @@
 4. Label-smooth 
 5. Our 
 
+```
+ ln -s ../Market/pytorch/gallery ./attack_query/pytorch/gallery
+```
+
 86.85 / 96.88 / 70.27
 40.80 / 79.39 /19.24
 
