@@ -268,7 +268,7 @@ if not os.path.isdir(subdir_name):
 #######################################################################
 # Creat Up bound and low bound
 # Clip 
-zeros = np.ones((256,128,3),dtype=np.uint8)
+zeros = np.zeros((256,128,3),dtype=np.uint8)
 zeros = Image.fromarray(zeros) 
 zeros = data_transforms(zeros)
 
