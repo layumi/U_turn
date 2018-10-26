@@ -1,0 +1,11 @@
+{
+ "gpu_ids": "0",
+ "name": "PCB-8",
+ "data_dir": "../Market/pytorch",
+ "train_all": false,
+ "color_jitter": false,
+ "batchsize": 8,
+ "erasing_p": 0,
+ "use_dense": false,
+ "PCB": true
+}

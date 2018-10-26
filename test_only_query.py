@@ -14,17 +14,17 @@ from torchvision import datasets, models, transforms
 import time
 import os
 import scipy.io
-from model import ft_net, ft_net_dense
+from model import ft_net, ft_net_dense, PCB, PCB_test
 
 ######################################################################
 # Options
 # --------
 parser = argparse.ArgumentParser(description='Training')
-parser.add_argument('--gpu_ids',default='1', type=str,help='gpu_ids: e.g. 0  0,1,2  0,2')
+parser.add_argument('--gpu_ids',default='0', type=str,help='gpu_ids: e.g. 0  0,1,2  0,2')
 parser.add_argument('--which_epoch',default='last', type=str, help='0,1,2,3...or last')
-parser.add_argument('--test_dir',default='/home/zzd/Market/pytorch',type=str, help='./test_data')
+parser.add_argument('--test_dir',default='/home/zzd/cloud/Market/pytorch',type=str, help='./test_data')
 parser.add_argument('--name', default='ft_ResNet50', type=str, help='save model path')
-parser.add_argument('--batchsize', default=100, type=int, help='batchsize')
+parser.add_argument('--batchsize', default=48, type=int, help='batchsize')
 parser.add_argument('--use_dense', action='store_true', help='use densenet121' )
 parser.add_argument('--test_all', action='store_true', help='test gallery and query')
 
@@ -90,26 +90,37 @@ def fliplr(img):
 def extract_feature(model,dataloaders):
     features = torch.FloatTensor()
     count = 0
+    opt.PCB = True
     for data in dataloaders:
         img, label = data
         n, c, h, w = img.size()
         count += n
-        #print(count)
+        print(count)
         if opt.use_dense:
             ff = torch.FloatTensor(n,1024).zero_()
         else:
             ff = torch.FloatTensor(n,2048).zero_()
+        if opt.PCB:
+            ff = torch.FloatTensor(n,2048,6).zero_() # we have six parts
         for i in range(2):
             if(i==1):
                 img = fliplr(img)
             input_img = Variable(img.cuda())
             outputs = model(input_img) 
             f = outputs.data.cpu()
-            #print(f.size())
             ff = ff+f
         # norm feature
-        fnorm = torch.norm(ff, p=2, dim=1, keepdim=True)
-        ff = ff.div(fnorm.expand_as(ff))
+        if opt.PCB:
+            # feature size (n,2048,6)
+            # 1. To treat every part equally, I calculate the norm for every 2048-dim part feature.
+            # 2. To keep the cosine score==1, sqrt(6) is added to norm the whole feature (2048*6).
+            fnorm = torch.norm(ff, p=2, dim=1, keepdim=True) * np.sqrt(6) 
+            ff = ff.div(fnorm.expand_as(ff))
+            ff = ff.view(ff.size(0), -1)
+        else:
+            fnorm = torch.norm(ff, p=2, dim=1, keepdim=True)
+            ff = ff.div(fnorm.expand_as(ff))
+
         features = torch.cat((features,ff), 0)
     return features
 
@@ -140,11 +151,10 @@ if opt.use_dense:
     model_structure = ft_net_dense(751)
 else:
     model_structure = ft_net(751)
-model = load_network(model_structure)
 
-# Remove the final fc layer and classifier layer
-model.model.fc = nn.Sequential()
-model.classifier = nn.Sequential()
+model_structure = PCB(751)
+model = load_network(model_structure)
+model = PCB_test(model)
 
 # Change to test mode
 model = model.eval()

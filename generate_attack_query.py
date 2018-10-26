@@ -14,7 +14,7 @@ from torchvision import datasets, models, transforms
 import time
 import os
 import scipy.io
-from model import ft_net, ft_net_dense
+from model import ft_net, ft_net_dense,PCB, PCB_test
 from PIL import Image
 
 ######################################################################
@@ -23,9 +23,9 @@ from PIL import Image
 parser = argparse.ArgumentParser(description='Training')
 parser.add_argument('--gpu_ids',default='0', type=str,help='gpu_ids: e.g. 0  0,1,2  0,2')
 parser.add_argument('--which_epoch',default='last', type=str, help='0,1,2,3...or last')
-parser.add_argument('--test_dir',default='/home/zzd/Market/pytorch',type=str, help='./test_data')
-parser.add_argument('--name', default='ft_ResNet50', type=str, help='save model path')
-parser.add_argument('--batchsize', default=128, type=int, help='batchsize')
+parser.add_argument('--test_dir',default='/home/zzd/cloud/Market/pytorch',type=str, help='./test_data')
+parser.add_argument('--name', default='PCB-8', type=str, help='save model path')
+parser.add_argument('--batchsize', default=32, type=int, help='batchsize')
 parser.add_argument('--use_dense', action='store_true', help='use densenet121' )
 parser.add_argument('--method_id', default=3, type=int, help='1.fast || 2.least likely || 3.label smooth')
 parser.add_argument('--rate', default=2, type=int, help='attack rate')
@@ -55,26 +55,16 @@ if len(gpu_ids)>0:
 # data.
 #
 data_transforms = transforms.Compose([
-        transforms.Resize((256,128), interpolation=3),
+        transforms.Resize((384,192), interpolation=3),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-############### Ten Crop        
-        #transforms.TenCrop(224),
-        #transforms.Lambda(lambda crops: torch.stack(
-         #   [transforms.ToTensor()(crop) 
-          #      for crop in crops]
-           # )),
-        #transforms.Lambda(lambda crops: torch.stack(
-         #   [transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])(crop)
-          #       for crop in crops]
-          # ))
 ])
 
 
 data_dir = test_dir
 image_datasets = {x: datasets.ImageFolder( os.path.join(data_dir,x) ,data_transforms) for x in ['gallery','query']}
 dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=opt.batchsize,
-                                             shuffle=False, num_workers=4) for x in ['gallery','query']}
+                                             shuffle=False, num_workers=8) for x in ['gallery','query']}
 
 class_names = image_datasets['query'].classes
 use_gpu = torch.cuda.is_available()
@@ -113,8 +103,8 @@ def generate_attack(model,dataloaders, method_id):
         img, label = data # Note that this is the label in the testing set (different with the training set)
         n, c, h, w = img.size()
         inputs = Variable(img.cuda(), requires_grad=True)
-        if method_id != 5:
-            outputs = model(inputs)
+        #if method_id != 5:
+         #   outputs = model(inputs)
         # ---------------------attack------------------
         # The input has been whiten.
         # So when we recover, we need to use a alpha
@@ -125,18 +115,41 @@ def generate_attack(model,dataloaders, method_id):
         diff = Variable(diff.cuda(), requires_grad = False)
         #1. FGSM, GradientSignAttack
         if method_id == 1:
-            _, preds = torch.max(outputs.data, 1)
+            outputs = model(inputs)
+            part = {}
+            sm = nn.Softmax(dim=1)
+            num_part = 6
+            for i in range(num_part):
+                    part[i] = outputs[i]
+
+            score = sm(part[0]) + sm(part[1]) +sm(part[2]) + sm(part[3]) +sm(part[4]) +sm(part[5])
+            _, preds = torch.max(score.data, 1)
+
             labels = Variable(preds.cuda())
-            loss = criterion(outputs, labels)
+            loss = criterion(part[0], labels)
+            for i in range(num_part-1):
+                loss += criterion(part[i+1], labels)
             loss.backward()
             inputs = inputs + torch.sign(inputs.grad) * opt.rate * alpha
             inputs = clip(inputs,n)
         #2. IterativeGradientSignAttack
         elif method_id == 2:
-            _, preds = torch.max(outputs.data, 1)
+            outputs = model(inputs)
+            part = {}
+            sm = nn.Softmax(dim=1)
+            num_part = 6
+            for i in range(num_part):
+                    part[i] = outputs[i]
+
+            score = sm(part[0]) + sm(part[1]) +sm(part[2]) + sm(part[3]) +sm(part[4]) +sm(part[5])
+            _, preds = torch.max(score.data, 1)
+
             labels = Variable(preds.cuda())
+
             for iter in range( round(min(1.25 * opt.rate, opt.rate+4))):
-                loss = criterion(outputs, labels)
+                loss = criterion(part[0], labels)
+                for i in range(num_part-1):
+                    loss += criterion(part[i+1], labels)
                 loss.backward()
                 diff += torch.sign(inputs.grad)
                 mask_diff = diff.abs() > opt.rate
@@ -145,13 +158,30 @@ def generate_attack(model,dataloaders, method_id):
                 inputs = clip(inputs,n)
                 inputs = Variable(inputs.data, requires_grad=True)
                 outputs = model(inputs)
+                part = {}
+                sm = nn.Softmax(dim=1)
+                num_part = 6
+                for i in range(num_part):
+                    part[i] = outputs[i]
         #3. Iterative Least-likely method
         elif method_id == 3:
             # least likely label is fixed
-            _, ll_preds = torch.min(outputs.data, 1)
+            outputs = model(inputs)
+            part = {}
+            sm = nn.Softmax(dim=1)
+            num_part = 6
+            for i in range(num_part):
+                    part[i] = outputs[i]
+
+            score = sm(part[0]) + sm(part[1]) +sm(part[2]) + sm(part[3]) +sm(part[4]) +sm(part[5])
+
+            _, ll_preds = torch.min(score.data, 1)
             ll_label = Variable(ll_preds, requires_grad=False)
             for iter in range( round(min(1.25 * opt.rate, opt.rate+4))):
-                loss = criterion(outputs, ll_label)
+                loss = criterion(part[0], ll_label)
+                for i in range(num_part-1):
+                    loss += criterion(part[i+1], ll_label)
+                
                 loss.backward()
                 diff += torch.sign(inputs.grad)
                 mask_diff = diff.abs() > opt.rate
@@ -160,6 +190,11 @@ def generate_attack(model,dataloaders, method_id):
                 inputs = clip(inputs,n)
                 inputs = Variable(inputs.data, requires_grad=True)
                 outputs = model(inputs)
+                part = {}
+                sm = nn.Softmax(dim=1)
+                num_part = 6
+                for i in range(num_part):
+                    part[i] = outputs[i]
         #4. Label-smooth method
         elif method_id == 4:
             batch_size = inputs.shape[0]
@@ -184,11 +219,14 @@ def generate_attack(model,dataloaders, method_id):
         elif method_id == 5:
             #remove classifier
             #L2norm = nn.InstanceNorm1d(2048, affine=False)
-            model.model.fc = nn.Sequential() #nn.Sequential(*L2norm)
-            model.classifier = nn.Sequential()
+            #model.model.fc = nn.Sequential() #nn.Sequential(*L2norm)
+            #model.classifier = nn.Sequential()
+            model = PCB_test(model)
             outputs = model(inputs)
             fnorm = torch.norm(outputs, p=2, dim=1, keepdim=True)
             outputs = outputs.div(fnorm.expand_as(outputs))
+            outputs = outputs.view(outputs.size(0), -1)
+            print(outputs.shape)
             feature_dim = outputs.shape[1]
             batch_size = inputs.shape[0]
             #zero_feature = torch.zeros(batch_size,feature_dim)
@@ -208,6 +246,7 @@ def generate_attack(model,dataloaders, method_id):
                 outputs = model(inputs)
                 fnorm = torch.norm(outputs, p=2, dim=1, keepdim=True)
                 outputs = outputs.div(fnorm.expand_as(outputs))
+                outputs = outputs.view(outputs.size(0), -1)
             #print( torch.sum(outputs*target))
         else:
             print('unknow method id')
@@ -246,10 +285,7 @@ query_cam,query_label = get_id(query_path)
 ######################################################################
 # Load Collected data Trained model
 #print('-------generate-----------')
-if opt.use_dense:
-    model_structure = ft_net_dense(751)
-else:
-    model_structure = ft_net(751)
+model_structure = PCB(751)
 model = load_network(model_structure)
 
 # Change to test mode

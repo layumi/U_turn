@@ -58,7 +58,7 @@ def compute_mAP(index, good_index, junk_index):
 
 ######################################################################
 # main function
-def main( query_path ):
+def main( query_path = './' ):
     result_q = scipy.io.loadmat(query_path+'/query_result.mat')
     query_feature = torch.FloatTensor(result_q['query_f'])
     query_cam = result_q['query_cam'][0]
@@ -92,5 +92,6 @@ def main( query_path ):
 
 if __name__=='__main__':
     #since = time.time()
+    query_path = './'
     main(query_path)
     #print(time.time()-since)

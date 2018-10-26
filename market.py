@@ -18,18 +18,18 @@ for i in range(6):
     top10[i] = []
     mAP[i] = []
 
-top1[0] = [88.56, 88.56, 88.56, 88.56, 88.56]
-top10[0] = [97.03, 97.03, 97.03, 97.03, 97.03]
-mAP[0] = [70.28, 70.28, 70.28, 70.28, 70.28]
+top1[0] = [92.70, 92.70, 92.70, 92.70, 92.70] 
+top10[0] =[97.98, 97.98, 97.98, 97.98, 97.98] 
+mAP[0] = [77.14, 77.14, 77.14, 77.14, 77.14] 
 
-with open("../Output.txt", "r") as f:
+with open("./Output.txt", "r") as f:
     for line in f:
         score = line.split('|')
         method_id = int(score[2])
         top1_acc, top10_acc, mAP_acc = float(score[3]), float(score[5]), float(score[6])
-        top1[method_id].append(top1_acc)
-        top10[method_id].append(top10_acc)
-        mAP[method_id].append(mAP_acc)
+        top1[method_id].append(top1_acc*100)
+        top10[method_id].append(top10_acc*100)
+        mAP[method_id].append(mAP_acc*100)
 
 fig = plt.figure(figsize=(15,4), dpi=180)
 ax0 = fig.add_subplot(131, ylabel="Rank-1(%)",xlabel='epsilon')
@@ -37,7 +37,7 @@ ax0.plot(x_epoch, top1[0], 'k-', label='Clean')
 ax0.plot(x_epoch, top1[1], 'b^-', label='Fast')
 ax0.plot(x_epoch, top1[2], 'rs-', label='Basic')
 ax0.plot(x_epoch, top1[3], 'gv-', label='Least-likely')
-ax0.plot(x_epoch, top1[5], 'yo-', label='Our')
+ax0.plot(x_epoch, top1[5], 'yo-', label='Ours')
 ax0.grid(True)
 ax0.legend()
 plt.ylim(0.0,100.0)
@@ -48,7 +48,7 @@ ax0.plot(x_epoch, top10[0], 'k-', label='Clean')
 ax0.plot(x_epoch, top10[1], 'b^-', label='Fast')
 ax0.plot(x_epoch, top10[2], 'rs-', label='Basic')
 ax0.plot(x_epoch, top10[3], 'gv-', label='Least-likely')
-ax0.plot(x_epoch, top10[5], 'yo-', label='Our')
+ax0.plot(x_epoch, top10[5], 'yo-', label='Ours')
 ax0.grid(True)
 ax0.legend()
 plt.ylim(0,100)
@@ -59,7 +59,7 @@ ax0.plot(x_epoch, mAP[0], 'k-', label='Clean')
 ax0.plot(x_epoch, mAP[1], 'b^-', label='Fast')
 ax0.plot(x_epoch, mAP[2], 'rs-', label='Basic')
 ax0.plot(x_epoch, mAP[3], 'gv-', label='Least-likely')
-ax0.plot(x_epoch, mAP[5], 'yo-', label='Our')
+ax0.plot(x_epoch, mAP[5], 'yo-', label='Ours')
 ax0.grid(True)
 ax0.legend()
 plt.ylim(0,100)

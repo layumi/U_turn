@@ -19,7 +19,7 @@ if not os.path.isdir(save_path):
     os.mkdir(save_path)
 #-----------------------------------------
 #query
-query_path = download_path + '/ft_ResNet50-' + str(opt.method_id) + '/' + str(opt.rate)
+query_path = download_path + '/PCB-8-' + str(opt.method_id) + '/' + str(opt.rate)
 query_save_path = download_path + '/pytorch/query'
 if not os.path.isdir(query_save_path):
     os.mkdir(query_save_path)
