@@ -31,3 +31,4 @@ core
 *.npy
 *.pt
 *.pth
+*.json
