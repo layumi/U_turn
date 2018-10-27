@@ -1,6 +1,7 @@
 # Don't track content of these folders
 __pycache__/
 attack_query/
+model/
 configs/cifs9a31
 core
 
