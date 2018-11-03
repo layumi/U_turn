@@ -2,6 +2,7 @@
 __pycache__/
 attack_query/
 model/
+data/
 configs/cifs9a31
 core
 
