@@ -275,7 +275,7 @@ def train_model(model, model_test, criterion, optimizer, scheduler, num_epochs=2
     print('Training complete in {:.0f}m {:.0f}s'.format(
         time_elapsed // 60, time_elapsed % 60))
     #print('Best val Acc: {:4f}'.format(best_acc))
-    save_network(model_test, opt.name+'adapt', epoch)
+    #save_network(model_test, opt.name+'adapt', epoch)
 
     return model
 

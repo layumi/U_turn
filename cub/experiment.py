@@ -2,6 +2,11 @@ import os
 import evaluate_gpu
 
 test_rate = (2,4,8,12,16)
+
+query_save_path = 'attack_query'
+if not os.path.isdir(query_save_path):
+    os.mkdir(query_save_path)
+
 for i in range(5):
     rate = test_rate[i]
     for j in range(5):

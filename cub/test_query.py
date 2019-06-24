@@ -21,10 +21,10 @@ from model import ft_net, ft_net_dense, PCB, PCB_test
 # --------
 parser = argparse.ArgumentParser(description='Training')
 parser.add_argument('--gpu_ids',default='1', type=str,help='gpu_ids: e.g. 0  0,1,2  0,2')
-parser.add_argument('--which_epoch',default='last', type=str, help='0,1,2,3...or last')
+parser.add_argument('--which_epoch',default='060', type=str, help='0,1,2,3...or last')
 parser.add_argument('--test_dir',default='./images',type=str, help='./test_data')
-parser.add_argument('--name', default='ft_ResNet50', type=str, help='save model path')
-parser.add_argument('--batchsize', default=64, type=int, help='batchsize')
+parser.add_argument('--name', default='ft_ResNet50_all', type=str, help='save model path')
+parser.add_argument('--batchsize', default=100, type=int, help='batchsize')
 parser.add_argument('--use_dense', action='store_true', help='use densenet121' )
 parser.add_argument('--PCB', action='store_true', help='use PCB' )
 parser.add_argument('--output_path',default='./',type=str, help='output path')
@@ -166,8 +166,11 @@ if use_gpu:
     model = model.cuda()
 
 # Extract feature
-test_feature,test_label = extract_feature(model,dataloaders['test'])
+with torch.no_grad():
+    test_feature,test_label = extract_feature(model,dataloaders['test'])
 #print(test_label)
+print(test_feature.shape)
+print(len(test_label))
 result = {'img_f':test_feature.numpy(),'label':test_label}
 scipy.io.savemat(opt.output_path+'/query.mat',result)
 

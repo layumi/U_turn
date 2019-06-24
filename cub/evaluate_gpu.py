@@ -95,6 +95,7 @@ def main( query_path ):
 
 if __name__=='__main__':
     #since = time.time()
-    query_path = './attack_query/ft_ResNet50_all-1/2/'
+    query_path = '.'
+    #query_path = './attack_query/ft_ResNet50_all-1/2/'
     main(query_path)
     #print(time.time()-since)
