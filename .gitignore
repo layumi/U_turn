@@ -5,6 +5,7 @@ model/
 data/
 configs/cifs9a31
 core
+cub/images
 
 # Compiled source #
 ###################
