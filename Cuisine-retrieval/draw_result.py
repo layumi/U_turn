@@ -18,11 +18,11 @@ for i in range(6):
     top10[i] = []
     mAP[i] = []
 
-top1[0] = [44.53, 44.53, 44.53, 44.53, 44.53]
-top10[0] = [82.24, 82.24, 82.24, 82.24, 82.24]
-mAP[0] = [19.51, 19.51, 19.51, 19.51, 19.51]
+top1[0] = [66.41] * 5
+top10[0] = [94.53] * 5
+mAP[0] = [34.56] * 5
 
-with open("../Output.txt", "r") as f:
+with open("./Output.txt", "r") as f:
     for line in f:
         score = line.split('|')
         method_id = int(score[2])
@@ -65,4 +65,4 @@ ax0.legend()
 plt.ylim(0,100)
 plt.xlim(1,17)
 
-fig.savefig('CUB.jpg')
+fig.savefig('Food.jpg')
