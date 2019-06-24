@@ -185,7 +185,7 @@ def generate_attack(model,dataloaders, method_id):
             #remove classifier
             #L2norm = nn.InstanceNorm1d(2048, affine=False)
             #model.model.fc = nn.Sequential() #nn.Sequential(*L2norm)
-            model.classifier = nn.Sequential()
+            model.classifier.classifier = nn.Sequential()
             outputs = model(inputs)
             fnorm = torch.norm(outputs, p=2, dim=1, keepdim=True)
             outputs = outputs.div(fnorm.expand_as(outputs))

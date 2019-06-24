@@ -16,7 +16,6 @@ import os
 import scipy.io
 from model import ft_net, ft_net_dense
 from PIL import Image
-
 ######################################################################
 # Options
 # --------
@@ -100,6 +99,7 @@ def recover(inp):
     inp = np.clip(inp, 0, 255)
     return inp
 
+
 ######################################################################
 # Generate attack
 # ----------------------
@@ -114,7 +114,7 @@ def generate_attack(model,dataloaders, method_id):
         n, c, h, w = img.size()
         inputs = Variable(img.cuda(), requires_grad=True)
         if method_id != 5:
-            outputs = model(inputs)
+            outputs = model(inputs) 
         # ---------------------attack------------------
         # The input has been whiten.
         # So when we recover, we need to use a alpha
@@ -185,10 +185,11 @@ def generate_attack(model,dataloaders, method_id):
             #remove classifier
             #L2norm = nn.InstanceNorm1d(2048, affine=False)
             #model.model.fc = nn.Sequential() #nn.Sequential(*L2norm)
-            model.classifier = nn.Sequential()
-            outputs = model(inputs)
+            model.classifier.classifier = nn.Sequential()
+            outputs = model(inputs) 
             fnorm = torch.norm(outputs, p=2, dim=1, keepdim=True)
             outputs = outputs.div(fnorm.expand_as(outputs))
+
             feature_dim = outputs.shape[1]
             batch_size = inputs.shape[0]
             #zero_feature = torch.zeros(batch_size,feature_dim)
