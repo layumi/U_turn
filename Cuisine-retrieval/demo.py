@@ -11,7 +11,7 @@ from shutil import copyfile
 #######################################################################
 # Evaluate
 parser = argparse.ArgumentParser(description='Demo')
-parser.add_argument('--query_index', default=500, type=int, help='test_image_index')
+parser.add_argument('--query_index', default=300, type=int, help='test_image_index')
 parser.add_argument('--test_dir',default='./Food-cropped/pytorch',type=str, help='./test_data')
 parser.add_argument('--adv',action='store_true', help='./test_data')
 opts = parser.parse_args()
