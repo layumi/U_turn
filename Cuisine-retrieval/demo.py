@@ -7,11 +7,13 @@ from torchvision import datasets
 import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
+from shutil import copyfile
 #######################################################################
 # Evaluate
 parser = argparse.ArgumentParser(description='Demo')
 parser.add_argument('--query_index', default=500, type=int, help='test_image_index')
 parser.add_argument('--test_dir',default='./Food-cropped/pytorch',type=str, help='./test_data')
+parser.add_argument('--adv',action='store_true', help='./test_data')
 opts = parser.parse_args()
 
 data_dir = opts.test_dir
@@ -30,10 +32,11 @@ def imshow(path, title=None):
 ######################################################################
 result = scipy.io.loadmat('pytorch_result.mat')
 
-#result = scipy.io.loadmat('attack_query/ft_ResNet50_all-5/16/query.mat')
+if opts.adv:
+    result = scipy.io.loadmat('attack_query/ft_ResNet50_all-5/16/query.mat')
+
 query_feature = torch.FloatTensor(result['query_f'])
 query_label = result['query_label'][0]
-
 
 result = scipy.io.loadmat('pytorch_result.mat')
 gallery_feature = torch.FloatTensor(result['gallery_f'])
@@ -71,6 +74,12 @@ def sort_img(qf, ql, gf, gl):
     return index
 
 i = opts.query_index
+adv = ''
+if opts.adv:
+    adv = 'a'
+
+if not os.path.isdir(str(opts.query_index)+adv):
+    os.mkdir(str(opts.query_index)+adv)
 index = sort_img(query_feature[i],query_label[i],gallery_feature,gallery_label)
 
 ########################################################################
@@ -78,6 +87,8 @@ index = sort_img(query_feature[i],query_label[i],gallery_feature,gallery_label)
 
 query_path, _ = image_datasets['query'].imgs[i]
 query_label = query_label[i]
+if opts.adv:
+    query_path = query_path.replace('./Food-cropped/pytorch/query','attack_query/ft_ResNet50_all-5/16/')
 print(query_path)
 print('Top 10 images are as follow:')
 try: # Visualize Ranking Result 
@@ -86,6 +97,7 @@ try: # Visualize Ranking Result
     ax = plt.subplot(1,11,1)
     ax.axis('off')
     imshow(query_path)
+    copyfile(query_path, './%d%s/query.jpg'%(opts.query_index,adv) )
     #imshow(query_path,'query')
     for i in range(10):
         ax = plt.subplot(1,11,i+2)
@@ -98,6 +110,7 @@ try: # Visualize Ranking Result
         else:
             ax.set_title('%d'%(i+1), color='red')
         print(img_path)
+        copyfile(img_path, './%d%s/%d.jpg'%(opts.query_index,adv,i) )
     fig.savefig('result.jpg')
 except RuntimeError:
     for i in range(10):
