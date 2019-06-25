@@ -18,9 +18,9 @@ for i in range(6):
     top10[i] = []
     mAP[i] = []
 
-top1[0] = [44.53] *5
-top10[0] = [82.24] *5
-mAP[0] = [19.51] *5
+top1[0] = [54.86] *5
+top10[0] = [87.51] *5
+mAP[0] = [28.29] *5
 
 with open("./Output.txt", "r") as f:
     for line in f:

@@ -25,7 +25,7 @@ parser.add_argument('--gpu_ids',default='1', type=str,help='gpu_ids: e.g. 0  0,1
 parser.add_argument('--which_epoch',default='060', type=str, help='0,1,2,3...or last')
 parser.add_argument('--test_dir',default='./images',type=str, help='./test_data')
 parser.add_argument('--name', default='ft_ResNet50_all', type=str, help='save model path')
-parser.add_argument('--batchsize', default=32, type=int, help='batchsize')
+parser.add_argument('--batchsize', default=40, type=int, help='batchsize')
 parser.add_argument('--use_dense', action='store_true', help='use densenet121' )
 parser.add_argument('--method_id', default=3, type=int, help='1.fast || 2.least likely || 3.label smooth')
 parser.add_argument('--rate', default=2, type=int, help='attack rate')
@@ -185,7 +185,7 @@ def generate_attack(model,dataloaders, method_id):
             #remove classifier
             #L2norm = nn.InstanceNorm1d(2048, affine=False)
             #model.model.fc = nn.Sequential() #nn.Sequential(*L2norm)
-            model.classifier.classifier = nn.Sequential()
+            model.classifier = nn.Sequential()
             outputs = model(inputs)
             fnorm = torch.norm(outputs, p=2, dim=1, keepdim=True)
             outputs = outputs.div(fnorm.expand_as(outputs))
