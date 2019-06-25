@@ -10,8 +10,8 @@ import matplotlib.pyplot as plt
 #######################################################################
 # Evaluate
 parser = argparse.ArgumentParser(description='Demo')
-parser.add_argument('--query_index', default=77, type=int, help='test_image_index')
-parser.add_argument('--test_dir',default='../Food-cropped/pytorch',type=str, help='./test_data')
+parser.add_argument('--query_index', default=500, type=int, help='test_image_index')
+parser.add_argument('--test_dir',default='./Food-cropped/pytorch',type=str, help='./test_data')
 opts = parser.parse_args()
 
 data_dir = opts.test_dir
@@ -29,8 +29,13 @@ def imshow(path, title=None):
 
 ######################################################################
 result = scipy.io.loadmat('pytorch_result.mat')
+
+#result = scipy.io.loadmat('attack_query/ft_ResNet50_all-5/16/query.mat')
 query_feature = torch.FloatTensor(result['query_f'])
 query_label = result['query_label'][0]
+
+
+result = scipy.io.loadmat('pytorch_result.mat')
 gallery_feature = torch.FloatTensor(result['gallery_f'])
 gallery_label = result['gallery_label'][0]
 
@@ -77,15 +82,16 @@ print(query_path)
 print('Top 10 images are as follow:')
 try: # Visualize Ranking Result 
     # Graphical User Interface is needed
-    fig = plt.figure(figsize=(16,4))
+    fig = plt.figure(figsize=(12,4))
     ax = plt.subplot(1,11,1)
     ax.axis('off')
+    imshow(query_path)
     #imshow(query_path,'query')
     for i in range(10):
         ax = plt.subplot(1,11,i+2)
         ax.axis('off')
-        img_path, _ = image_datasets['gallery'].imgs[index[i]]
-        label = gallery_label[index[i]]
+        img_path, _ = image_datasets['gallery'].imgs[index[i+1]]
+        label = gallery_label[index[i+1]]
         imshow(img_path)
         if label == query_label:
             ax.set_title('%d'%(i+1), color='green')
@@ -95,8 +101,7 @@ try: # Visualize Ranking Result
     fig.savefig('result.jpg')
 except RuntimeError:
     for i in range(10):
-        img_path = image_datasets.imgs[index[i]]
+        img_path = image_datasets.imgs[index[i+1]]
         print(img_path[0])
     print('If you want to see the visualization of the ranking result, graphical user interface is needed.')
 
-fig.savefig("show.png")
