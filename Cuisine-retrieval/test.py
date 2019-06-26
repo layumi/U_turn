@@ -190,7 +190,7 @@ model.classifier.classifier = nn.Sequential()
 model = model.eval()
 if use_gpu:
     model = model.cuda()
-
+print(model)
 # Extract feature
 with torch.no_grad():
     query_feature, query_label = extract_feature(model,dataloaders['query'])
@@ -201,6 +201,7 @@ with torch.no_grad():
 # Save to Matlab for check
 result = {'gallery_f':gallery_feature.numpy(),'gallery_label':gallery_label.numpy(),'query_f':query_feature.numpy(),'query_label':query_label.numpy()}
 scipy.io.savemat('pytorch_result.mat',result)
+scipy.io.savemat('query.mat',result)
 
 print(opt.name)
 result = './model/%s/result.txt'%opt.name

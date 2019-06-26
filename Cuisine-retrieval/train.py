@@ -41,7 +41,7 @@ parser = argparse.ArgumentParser(description='Training')
 parser.add_argument('--gpu_ids',default='0', type=str,help='gpu_ids: e.g. 0  0,1,2  0,2')
 parser.add_argument('--name',default='ft_ResNet50', type=str, help='output model name')
 parser.add_argument('--pool',default='avg', type=str, help='pool avg')
-parser.add_argument('--data_dir',default='../Food-cropped/pytorch',type=str, help='training dir path')
+parser.add_argument('--data_dir',default='./Food-cropped/pytorch',type=str, help='training dir path')
 parser.add_argument('--train_all', action='store_true', help='use all training data' )
 parser.add_argument('--color_jitter', action='store_true', help='use color jitter in training' )
 parser.add_argument('--batchsize', default=32, type=int, help='batchsize')
@@ -307,7 +307,7 @@ def draw_curve(current_epoch):
 #
 if not opt.resume:
     if opt.use_dense:
-        model = ft_net_dense(len(class_names), opt.droprate)
+        model = ft_net_dense(len(class_names), droprate = opt.droprate, stride = opt.stride, pool = 'avg')
     elif opt.use_NAS:
         model = ft_net_NAS(len(class_names), opt.droprate)
     else:
