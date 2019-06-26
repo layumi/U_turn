@@ -8,10 +8,11 @@ import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
 from shutil import copyfile
+from PIL import Image
 #######################################################################
 # Evaluate
 parser = argparse.ArgumentParser(description='Demo')
-parser.add_argument('--query_index', default=10, type=int, help='test_image_index')
+parser.add_argument('--query_index', default=240, type=int, help='test_image_index')
 parser.add_argument('--test_dir',default='./images',type=str, help='./test_data')
 parser.add_argument('--adv',action='store_true', help='./test_data')
 opts = parser.parse_args()
@@ -98,7 +99,9 @@ try: # Visualize Ranking Result
     ax = plt.subplot(1,11,1)
     ax.axis('off')
     imshow(query_path)
-    copyfile(query_path, './%d%s/query.jpg'%(opts.query_index,adv) )
+    query256 = Image.open(query_path)
+    query256 = query256.resize((256,256))
+    query256.save('./%d%s/query.jpg'%(opts.query_index,adv) )
     #imshow(query_path,'query')
     for i in range(10):
         ax = plt.subplot(1,11,i+2)
@@ -111,7 +114,10 @@ try: # Visualize Ranking Result
         else:
             ax.set_title('%d'%(i+1), color='red')
         print(img_path)
-        copyfile(img_path, './%d%s/%d.jpg'%(opts.query_index,adv,i) )
+        img256 = Image.open(img_path)
+        img256 = img256.resize((256,256))
+        #copyfile(img_path, './%d%s/%d.jpg'%(opts.query_index,adv,i) )
+        img256.save('./%d%s/%d.jpg'%(opts.query_index,adv,i) )
     fig.savefig('result.jpg')
 except RuntimeError:
     for i in range(10):
