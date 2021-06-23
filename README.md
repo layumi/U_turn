@@ -9,6 +9,8 @@ python experiment.py
 # Attacking the Oxford and Paris Dataset 
 https://github.com/layumi/Oxford-Paris-Attack 
 
-# pytorch-mnist
+# Attacking Mnist
+https://github.com/layumi/A_reID/tree/master/cifar 
+
 Draw mnist
 ![](https://github.com/layumi/pytorch-mnist/blob/master/train.jpg)
