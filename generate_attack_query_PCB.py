@@ -1,0 +1,475 @@
+# -*- coding: utf-8 -*-
+
+from __future__ import print_function, division
+
+import argparse
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.optim import lr_scheduler
+from torch.autograd import Variable
+import numpy as np
+import torchvision
+from torchvision import datasets, models, transforms
+import time
+import os
+import scipy.io
+from model import ft_net, ft_net_dense,PCB, PCB_test
+from PIL import Image
+
+
+import torch.backends.cudnn as cudnn
+cudnn.benchmark = True
+######################################################################
+# Options
+# --------
+parser = argparse.ArgumentParser(description='Training')
+parser.add_argument('--gpu_ids',default='0', type=str,help='gpu_ids: e.g. 0  0,1,2  0,2')
+parser.add_argument('--which_epoch',default='last', type=str, help='0,1,2,3...or last')
+parser.add_argument('--test_dir',default='/home/zzd/Market/pytorch',type=str, help='./test_data')
+parser.add_argument('--name', default='PCB', type=str, help='save model path')
+parser.add_argument('--batchsize', default=36, type=int, help='batchsize')
+parser.add_argument('--use_dense', action='store_true', help='use densenet121' )
+parser.add_argument('--method_id', default=3, type=int, help='1.fast || 2.least likely || 3.label smooth')
+parser.add_argument('--rate', default=2, type=int, help='attack rate')
+parser.add_argument('--iter', default=20, type=int, help='for PIRE/TMA')
+parser.add_argument('--lr', default=0.1, type=float, help='for PIRE/TMA')
+parser.add_argument('--momentum', default=0, type=float, help='for accelebrating / not used here')
+parser.add_argument('--randomstart', action='store_true', help='use randomstart' )
+
+opt = parser.parse_args()
+
+str_ids = opt.gpu_ids.split(',')
+#which_epoch = opt.which_epoch
+name = opt.name
+test_dir = opt.test_dir
+
+gpu_ids = []
+for str_id in str_ids:
+    id = int(str_id)
+    if id >=0:
+        gpu_ids.append(id)
+
+# set gpu ids
+if len(gpu_ids)>0:
+    torch.cuda.set_device(gpu_ids[0])
+
+######################################################################
+# Load Data
+# ---------
+#
+# We will use torchvision and torch.utils.data packages for loading the
+# data.
+#
+data_transforms = transforms.Compose([
+        transforms.Resize((384,192), interpolation=3),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+])
+
+
+data_dir = test_dir
+image_datasets = {x: datasets.ImageFolder( os.path.join(data_dir,x) ,data_transforms) for x in ['gallery','query']}
+dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=opt.batchsize,
+                                             shuffle=False, num_workers=8) for x in ['gallery','query']}
+
+class_names = image_datasets['query'].classes
+use_gpu = torch.cuda.is_available()
+
+######################################################################
+# Load model
+#---------------------------
+def load_network(network):
+    save_path = os.path.join('./model',name,'net_%s.pth'%opt.which_epoch)
+    network.load_state_dict(torch.load(save_path))
+    return network
+
+######################################################################
+# recover image
+# -----------------
+def recover(inp):
+    """Imshow for Tensor."""
+    inp = inp.numpy().transpose((1, 2, 0))
+    mean = np.array([0.485, 0.456, 0.406])
+    std = np.array([0.229, 0.224, 0.225])
+    inp = std * inp + mean
+    inp = inp * 255.0
+    inp = np.clip(inp, 0, 255)
+    return inp
+
+######################################################################
+# Generate attack
+# ----------------------
+#
+# Generate a attack from  a trained model.
+#
+def generate_attack(model,dataloaders, method_id):
+    features = torch.FloatTensor()
+    count = 0
+    for data in dataloaders:
+        img, label = data # Note that this is the label in the testing set (different with the training set)
+        n, c, h, w = img.size()
+        inputs = Variable(img.cuda(), requires_grad=True)
+        #if method_id != 5:
+         #   outputs = model(inputs)
+        # ---------------------attack------------------
+        # The input has been whiten.
+        # So when we recover, we need to use a alpha
+        alpha = 1.0 / (0.226 * 255.0)
+        criterion = nn.CrossEntropyLoss()
+        inputs_copy = Variable(inputs.data, requires_grad = False)
+        diff = torch.FloatTensor(inputs.shape).zero_()
+        diff = Variable(diff.cuda(), requires_grad = False)
+
+        if opt.randomstart:
+            eta = torch.zeros_like(inputs).uniform_(-opt.rate,opt.rate).cuda()*alpha
+            inputs = clip(inputs+eta,n)
+            inputs = Variable(inputs.data, requires_grad=True)
+            inputs_copy = Variable(inputs.data, requires_grad = False)
+
+        #1. FGSM, GradientSignAttack
+        if method_id == 1:
+            if count ==0: model = torch.nn.DataParallel(model)
+            outputs = model(inputs)
+            part = {}
+            sm = nn.Softmax(dim=1)
+            num_part = 6
+            for i in range(num_part):
+                    part[i] = outputs[i]
+
+            score = sm(part[0]) + sm(part[1]) +sm(part[2]) + sm(part[3]) +sm(part[4]) +sm(part[5])
+            _, preds = torch.max(score.data, 1)
+
+            labels = Variable(preds.cuda())
+            loss = criterion(part[0], labels)
+            for i in range(num_part-1):
+                loss += criterion(part[i+1], labels)
+            loss.backward()
+            inputs = inputs + torch.sign(inputs.grad) * opt.rate * alpha
+            inputs = clip(inputs,n)
+
+            #if count == 0: model_test = PCB_test(model)
+            #outputs = model_test(inputs) 
+            #fnorm = torch.norm(outputs, p=2, dim=1, keepdim=True)* np.sqrt(6)
+            #outputs = outputs.div(fnorm.expand_as(outputs))
+            #outputs = outputs.view(outputs.size(0), -1)
+
+            #target = model_test(inputs_copy)
+            #fnorm = torch.norm(target, p=2, dim=1, keepdim=True)* np.sqrt(6)
+            #target = target.div(fnorm.expand_as(target))
+            #target = target.view(target.size(0), -1)
+
+            #print( torch.sum(outputs*outputs))
+            #print( torch.sum(outputs*target))
+        #2. IterativeGradientSignAttack
+        elif method_id == 2:
+            if count ==0: model = torch.nn.DataParallel(model)
+            outputs = model(inputs)
+            part = {}
+            sm = nn.Softmax(dim=1)
+            num_part = 6
+            for i in range(num_part):
+                    part[i] = outputs[i]
+
+            score = sm(part[0]) + sm(part[1]) +sm(part[2]) + sm(part[3]) +sm(part[4]) +sm(part[5])
+            _, preds = torch.max(score.data, 1)
+
+            labels = Variable(preds.cuda())
+
+            for iter in range( round(min(1.25 * opt.rate, opt.rate+4))):
+                loss = criterion(part[0], labels)
+                for i in range(num_part-1):
+                    loss += criterion(part[i+1], labels)
+                loss.backward()
+                diff += torch.sign(inputs.grad)
+                mask_diff = diff.abs() > opt.rate
+                diff[mask_diff] = opt.rate * torch.sign(diff[mask_diff])
+                inputs = inputs_copy + diff * 1.0  * alpha # we use 1 instead of opt.rate
+                inputs = clip(inputs,n)
+                inputs = Variable(inputs.data, requires_grad=True)
+                outputs = model(inputs)
+                part = {}
+                sm = nn.Softmax(dim=1)
+                num_part = 6
+                for i in range(num_part):
+                    part[i] = outputs[i]
+        #3. Iterative Least-likely method
+        elif method_id == 3:
+            # least likely label is fixed
+            if count ==0: model = torch.nn.DataParallel(model)
+            outputs = model(inputs)
+            part = {}
+            sm = nn.Softmax(dim=1)
+            num_part = 6
+            for i in range(num_part):
+                    part[i] = outputs[i]
+
+            score = sm(part[0]) + sm(part[1]) +sm(part[2]) + sm(part[3]) +sm(part[4]) +sm(part[5])
+
+            _, ll_preds = torch.min(score.data, 1)
+            ll_label = Variable(ll_preds, requires_grad=False)
+            for iter in range( round(min(1.25 * opt.rate, opt.rate+4))):
+                loss = criterion(part[0], ll_label)
+                for i in range(num_part-1):
+                    loss += criterion(part[i+1], ll_label)
+                
+                loss.backward()
+                diff += torch.sign(inputs.grad)
+                mask_diff = diff.abs() > opt.rate
+                diff[mask_diff] = opt.rate * torch.sign(diff[mask_diff])
+                inputs = inputs_copy - diff * 1.0 * alpha # we use 1 instead of opt.rate
+                inputs = clip(inputs,n)
+                inputs = Variable(inputs.data, requires_grad=True)
+                outputs = model(inputs)
+                part = {}
+                sm = nn.Softmax(dim=1)
+                num_part = 6
+                for i in range(num_part):
+                    part[i] = outputs[i]
+        #4. Label-smooth method
+        elif method_id == 4:
+            batch_size = inputs.shape[0]
+            smooth_label = torch.ones(batch_size, 751) /751.0
+            target = Variable(smooth_label.cuda(), requires_grad=False)
+            criterion2 = nn.MSELoss()
+            sm = nn.Softmax(dim = 1) #softmax work on the second dim (sum of the 751 elements = 1)
+            for iter in range( round(min(1.25 * opt.rate, opt.rate+4))):
+                sm_outputs = sm(outputs)
+                loss2 = criterion2(sm_outputs, target)
+                loss2.backward()
+                prob,_ = torch.max(sm_outputs,1)
+                print('iter:%d smooth-loss:%4f max-pre:%4f'%(iter, loss2.data[0],torch.mean(prob)))
+                diff += torch.sign(inputs.grad)
+                mask_diff = diff.abs() > opt.rate
+                diff[mask_diff] = opt.rate * torch.sign(diff[mask_diff])
+                inputs = inputs_copy - diff * 1.0 * alpha 
+                inputs = clip(inputs,n)
+                inputs = Variable(inputs.data, requires_grad=True)
+                outputs = model(inputs)
+        #5. MSE on feature
+        elif method_id == 5:
+            #remove classifier
+            #L2norm = nn.InstanceNorm1d(2048, affine=False)
+            #model.model.fc = nn.Sequential() #nn.Sequential(*L2norm)
+            #model.classifier = nn.Sequential()
+            
+            ### Multiple GPU
+            if count==0: 
+                model = PCB_test(model)
+                model = torch.nn.DataParallel(model)
+            ### 
+
+            outputs = model(inputs)
+            fnorm = torch.norm(outputs, p=2, dim=1, keepdim=True)* np.sqrt(6)
+            outputs = outputs.div(fnorm.expand_as(outputs))
+            outputs = outputs.view(outputs.size(0), -1)
+            print(outputs.shape)
+            feature_dim = outputs.shape[1]
+            batch_size = inputs.shape[0]
+            #zero_feature = torch.zeros(batch_size,feature_dim)
+            target = Variable(-outputs.data, requires_grad=False)
+            criterion2 = nn.MSELoss()
+            #s = target*target
+            #print(torch.sum(s))
+            for iter in range( round(min(1.25 * opt.rate, opt.rate+4))):
+                loss2 = criterion2(outputs, target)
+                loss2.backward()
+                if opt.momentum>0 and iter>0:
+                    momentum = opt.momentum*torch.sign(momentum) + (1-opt.momentum)*torch.sign(inputs.grad)
+                    diff += torch.sign(momentum)
+                else:
+                    momentum = torch.sign(inputs.grad)
+                    diff += torch.sign(inputs.grad)                   
+                mask_diff = diff.abs() > opt.rate
+                diff[mask_diff] = opt.rate * torch.sign(diff[mask_diff])
+                inputs = inputs_copy - diff * 1.0 * alpha
+                inputs = clip(inputs,n)
+                inputs = Variable(inputs.data, requires_grad=True)
+                outputs = model(inputs)
+                fnorm = torch.norm(outputs, p=2, dim=1, keepdim=True)* np.sqrt(6)
+                outputs = outputs.div(fnorm.expand_as(outputs))
+                outputs = outputs.view(outputs.size(0), -1)
+                print( torch.sum(outputs*target))
+        #6. PIRE
+        elif method_id == 6:
+            ### Multiple GPU
+            if count==0:
+                model = PCB_test(model)
+                model = torch.nn.DataParallel(model)
+
+            gem_out = model(inputs)
+            init_v = (torch.rand(n, c, h, w)-0.5)*2*opt.rate  # -16 to 16
+            diff = torch.autograd.Variable(init_v.cuda(),requires_grad=True)
+            loss_fn = torch.nn.MSELoss(reduction='sum')
+            learning_rate = opt.lr # here we use one large lrRate for quick converge.
+            optimizer = torch.optim.Adam([diff], lr=learning_rate)
+            if opt.iter ==20:
+                opt.iter = round(min(1.25 * opt.rate, opt.rate+4))
+            for iter in range(opt.iter): #round(min(1.25 * opt.rate, opt.rate+4))):
+                optimizer.zero_grad()
+                # Forward pass: compute predicted y by passing x to the model.
+                y_pred = model(inputs + diff * 1.0  * alpha)
+                # Compute and print loss.
+                loss =  -1 * loss_fn(y_pred, gem_out)
+                diff.data = torch.clamp(diff.data,-opt.rate,opt.rate)
+                loss.backward(retain_graph=True)
+                print(loss)
+                optimizer.step()
+            inputs = inputs + diff * 1.0  * alpha
+            inputs = clip(inputs,n)
+        #7. TMA with normalized feature
+        elif method_id == 7:
+            ### Multiple GPU
+            if count==0:
+                model = PCB_test(model)
+                model = torch.nn.DataParallel(model)
+            gem_out = model(inputs)
+            # norm
+            fnorm = torch.norm(gem_out, p=2, dim=1, keepdim=True)
+            gem_out = gem_out.div(fnorm.expand_as(gem_out))
+            gem_out = gem_out.view(gem_out.size(0), -1)
+
+            init_v = (torch.rand(n, c, h, w)-0.5)*2*opt.rate  # -16 to 16
+            diff = torch.autograd.Variable(init_v.cuda(),requires_grad=True)
+            loss_fn = torch.nn.MSELoss(reduction='sum')
+            learning_rate = opt.lr # here we use one large lrRate for quick converge.
+            optimizer = torch.optim.Adam([diff], lr=learning_rate)
+
+            if opt.iter ==20:
+                opt.iter = round(min(1.25 * opt.rate, opt.rate+4))
+            for iter in range(opt.iter): #round(min(1.25 * opt.rate, opt.rate+4))):
+                optimizer.zero_grad()
+                # Forward pass: compute predicted y by passing x to the model.
+                y_pred = model(inputs + diff * 1.0  * alpha)
+                # norm
+                fnorm = torch.norm(y_pred, p=2, dim=1, keepdim=True)
+                y_pred = y_pred.div(fnorm.expand_as(y_pred))
+                y_pred = y_pred.view(y_pred.size(0), -1)
+                # Compute and print loss.
+                loss =  -1* loss_fn(y_pred, gem_out)
+                diff.data = torch.clamp(diff.data,-opt.rate,opt.rate)
+                loss.backward(retain_graph=True)
+                print(loss)
+                optimizer.step()
+            inputs = inputs + diff * 1.0  * alpha
+            inputs = clip(inputs,n)
+        elif method_id == 8:
+            inputs = inputs + upa.repeat(n,1,1,1).detach()/10*opt.rate
+            inputs = clip(inputs,n)
+        #9. SMA
+        elif method_id == 9:
+            ### Multiple GPU
+            if count==0:
+                model = PCB_test(model)
+                model = torch.nn.DataParallel(model)
+
+            # target
+            outputs = model(inputs)
+            feature_dim = outputs.shape[1]
+            batch_size = inputs.shape[0]
+            target = Variable(outputs.data, requires_grad=False)
+            criterion2 = nn.MSELoss()
+            # initial perturbation as random start
+            eta = torch.zeros_like(inputs).uniform_(-opt.rate,opt.rate).cuda()*alpha
+            inputs = clip(inputs+eta,n)
+            inputs = Variable(inputs.data, requires_grad=True)
+            inputs_copy = Variable(inputs.data, requires_grad = False)
+            outputs = model(inputs)
+            for iter in range( round(min(1.25 * opt.rate, opt.rate+4))):
+                loss2 = -criterion2(outputs, target)
+                loss2.backward()
+                print(loss2)
+                diff += torch.sign(inputs.grad)
+                mask_diff = diff.abs() > opt.rate
+                diff[mask_diff] = opt.rate * torch.sign(diff[mask_diff])
+                inputs = inputs_copy - diff * 1.0 * alpha
+                inputs = clip(inputs,n)
+                inputs = Variable(inputs.data, requires_grad=True)
+                outputs = model(inputs)
+        # identity
+        elif method_id == 0:
+            inputs = clip(inputs,n)
+        else:
+            print('unknow method id')
+ 
+        #print(torch.mean(diff.abs()))
+        #Save attack images
+        attack = inputs.data.cpu()
+        for j in range(inputs.shape[0]):
+            im = recover(attack[j,:,:,:])
+            im_path = query_path[count+j][0].split('/')[-1]
+            im = Image.fromarray(im.astype('uint8'))
+            im.save( os.path.join('./attack_query', opt.name + '-' + str(opt.method_id), str(opt.rate), im_path) )
+        count += n
+        #print(count)
+
+def get_id(img_path):
+    camera_id = []
+    labels = []
+    for path, v in img_path:
+        filename = path.split('/')[-1]
+        label = filename[0:4]
+        camera = filename.split('c')[1]
+        if label[0:2]=='-1':
+            labels.append(-1)
+        else:
+            labels.append(int(label))
+        camera_id.append(int(camera[0]))
+    return camera_id, labels
+
+gallery_path = image_datasets['gallery'].imgs
+query_path = image_datasets['query'].imgs
+
+gallery_cam,gallery_label = get_id(gallery_path)
+query_cam,query_label = get_id(query_path)
+
+######################################################################
+# Load Collected data Trained model
+#print('-------generate-----------')
+model_structure = PCB(751)
+model = load_network(model_structure)
+
+# Change to test mode
+model = model.eval()
+if use_gpu:
+    model = model.cuda()
+
+dir_name = os.path.join('./attack_query',name + '-' + str(opt.method_id))
+if not os.path.isdir(dir_name):
+    os.mkdir(dir_name)
+
+subdir_name = os.path.join('./attack_query',name + '-' + str(opt.method_id), str(opt.rate))
+if not os.path.isdir(subdir_name):
+    os.mkdir(subdir_name)
+
+#######################################################################
+# Creat Up bound and low bound
+# Clip 
+zeros = np.zeros((256,128,3),dtype=np.uint8)
+zeros = Image.fromarray(zeros) 
+zeros = data_transforms(zeros)
+
+ones = 255*np.ones((256,128,3), dtype=np.uint8)
+ones = Image.fromarray(ones)
+ones = data_transforms(ones)
+
+zeros,ones = zeros.cuda(),ones.cuda()
+
+def clip(inputs, batch_size):
+    inputs = inputs.data
+    for i in range(batch_size):
+        inputs[i] = clip_single(inputs[i])
+    inputs = Variable(inputs.cuda())
+    return inputs
+
+def clip_single(input):       
+    low_mask = input<zeros
+    up_mask = input>ones
+    input[low_mask] = zeros[low_mask]
+    input[up_mask] = ones[up_mask]
+    return input
+
+##########################################################################
+# Generate Attack Samples
+generate_attack(model,dataloaders['query'],opt.method_id)
+

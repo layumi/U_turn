@@ -1,0 +1,43 @@
+# Don't track content of these folders
+__pycache__/
+attack_query/
+model/
+data/
+configs/cifs9a31
+core
+cub/images
+cub/CUB_200_2011/
+Food/
+UPA_weight/
+sma_defence/
+Cuisine-retrieval/Food-cropped/
+# Compiled source #
+###################
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
+*.pyc
+
+# Packages #
+############
+# it's better to unpack these files and commit the raw source
+# git has its own built in compression methods
+*.7z
+*.th
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+*.mat
+*.jpg
+*.jpeg
+*.npy
+*.pt
+*.pth
+*.json
