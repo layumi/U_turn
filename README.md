@@ -53,4 +53,15 @@ https://github.com/layumi/A_reID/tree/master/cifar
 ![](https://github.com/layumi/pytorch-mnist/blob/master/train.jpg)
 
 
+### Citation
+```
+@article{zheng2022query,
+  title={Query attack via opposite-direction feature: Towards robust image retrieval},
+  author={Zheng, Zhedong and Zheng, Liang and Yang, Yi and Wu, Fei},
+  journal={IJCV},
+  year={2022}
+}
+```
+
+
 
