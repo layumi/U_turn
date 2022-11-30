@@ -56,7 +56,7 @@ https://github.com/layumi/A_reID/tree/master/cifar
 ### Citation
 ```
 @article{zheng2022query,
-  title={Query attack via opposite-direction feature: Towards robust image retrieval},
+  title={U-turn: Crafting Adversarial Queries with Opposite-direction Features},
   author={Zheng, Zhedong and Zheng, Liang and Yang, Yi and Wu, Fei},
   journal={IJCV},
   year={2022}
