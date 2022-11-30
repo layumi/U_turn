@@ -3,7 +3,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
-One simple code to cheat your retrieval model via **Modifying Query ONLY** (based on [pytorch](https://pytorch.org)) published at IJCV 2022.
+One simple code to cheat your retrieval model via **Modifying Query ONLY** (based on [pytorch](https://pytorch.org)) accepted by IJCV.
 Pre-print version is at https://arxiv.org/abs/1809.02681.  
 
 The main idea underpinning our method is simple yet effective, making the query feature to conduct a U-turn :arrow_right_hook:.
